@@ -1,0 +1,781 @@
+================================================================================
+PROPERTY MANAGEMENT SYSTEM - DEVELOPMENT PLAN
+================================================================================
+Project: Rental Property Management Platform
+Stack: Next.js 16, TypeScript, Supabase, Tailwind CSS
+Updated: January 11, 2026
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+1. Project Overview
+2. Phase 1: Foundation & Setup
+3. Phase 2: Authentication & User Management
+4. Phase 3: Core Property Management
+5. Phase 4: Lease & Tenant Management
+6. Phase 5: Payment Tracking
+7. Phase 6: Maintenance System
+8. Phase 7: Document Management
+9. Phase 8: Dashboard & Analytics
+10. Phase 9: Testing & Quality Assurance
+11. Phase 10: Deployment & Production
+12. Technical Architecture
+13. Security Considerations
+14. Future Enhancements
+
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+DESCRIPTION:
+A comprehensive property management system enabling owners, property managers,
+and tenants to manage rental properties, leases, payments, and maintenance
+requests.
+
+USER ROLES:
+- Owner: Manages properties, assigns managers, views all data
+- Property Manager: Manages assigned properties, units, tenants
+- Tenant: Views lease info, makes payments, submits maintenance requests
+
+KEY FEATURES:
+- Multi-role authentication with Supabase Auth
+- Property and unit management
+- Lease lifecycle management
+- Payment tracking with overdue detection
+- Maintenance request system with image uploads
+- Document storage and management
+- Role-based dashboards with analytics
+
+
+================================================================================
+2. PHASE 1: FOUNDATION & SETUP
+================================================================================
+
+2.1 PROJECT CONFIGURATION
+-------------------------
+✓ Next.js 16 project initialized
+✓ TypeScript configured
+✓ Tailwind CSS 4 setup
+✓ Dependencies installed (Supabase, Zod, date-fns, etc.)
+
+REMAINING TASKS:
+□ Create .env.local file with Supabase credentials
+□ Configure Next.js middleware for auth protection
+□ Setup folder structure:
+  - src/app/ - App router pages
+  - src/components/ - Reusable UI components
+  - src/lib/ - Utility functions and configs
+  - src/types/ - TypeScript type definitions
+  - src/hooks/ - Custom React hooks
+  - src/utils/ - Helper functions
+
+2.2 TAILWIND & UI SETUP
+-----------------------
+□ Configure Tailwind theme (colors, fonts, spacing)
+□ Create design system tokens:
+  - Primary/secondary colors
+  - Success/warning/error colors
+  - Typography scale
+  - Shadow system
+  - Border radius values
+□ Setup component library structure
+□ Create base layout components (Header, Sidebar, Footer)
+
+2.3 SUPABASE CONFIGURATION
+--------------------------
+□ Execute database schema (docs/database-schema.sql)
+□ Configure Supabase Storage buckets:
+  - property-images
+  - unit-images
+  - maintenance-images
+  - lease-documents
+  - tenant-documents
+□ Setup storage policies for secure file access
+□ Configure Supabase Auth providers (email/password)
+□ Test RLS policies in Supabase dashboard
+
+
+================================================================================
+3. PHASE 2: AUTHENTICATION & USER MANAGEMENT
+================================================================================
+
+3.1 AUTHENTICATION FLOW
+-----------------------
+□ Create auth pages:
+  - /login - Sign in page
+  - /signup - Registration with role selection
+  - /forgot-password - Password reset
+  - /reset-password - New password entry
+
+□ Implement authentication logic:
+  - Email/password sign up
+  - Email/password login
+  - Password reset flow
+  - Session management with cookies
+  - Auto-redirect based on role
+
+□ Create middleware for route protection:
+  - Protect dashboard routes
+  - Role-based access control
+  - Redirect unauthenticated users
+
+3.2 USER PROFILE MANAGEMENT
+---------------------------
+□ Create profile pages:
+  - /profile - View/edit profile
+  - /profile/settings - Account settings
+
+□ Profile features:
+  - Update name, phone, avatar
+  - Change password
+  - Upload profile picture to Supabase Storage
+  - Delete account (with confirmation)
+
+3.3 ROLE-BASED UI
+-----------------
+□ Create role detection hook (useUserRole)
+□ Implement conditional rendering based on role
+□ Create role-specific navigation menus
+□ Setup role-based route guards
+
+
+================================================================================
+4. PHASE 3: CORE PROPERTY MANAGEMENT
+================================================================================
+
+4.1 PROPERTY CRUD OPERATIONS
+----------------------------
+□ Properties list page (/properties)
+  - Grid/list view toggle
+  - Search and filter by type, city, status
+  - Pagination
+  - Archive/unarchive properties
+
+□ Property detail page (/properties/[id])
+  - Property information display
+  - Units list within property
+  - Property statistics (occupancy rate, revenue)
+  - Edit property button (owners only)
+
+□ Create property form (/properties/new)
+  - Multi-step form:
+    1. Basic info (name, type, description)
+    2. Address details
+    3. Image upload
+  - Form validation with Zod
+  - Image upload to Supabase Storage
+  - Success notification
+
+□ Edit property page (/properties/[id]/edit)
+  - Pre-filled form with existing data
+  - Update property information
+  - Replace property image
+
+4.2 PROPERTY MANAGER ASSIGNMENT
+-------------------------------
+□ Manager assignment UI in property detail page
+  - Search users with 'property_manager' role
+  - Add/remove managers
+  - View assigned managers list
+  - Permissions check (owners only)
+
+4.3 UNITS MANAGEMENT
+--------------------
+□ Units list within property
+  - Status badges (available, occupied, maintenance)
+  - Quick stats (rent, bed/bath, sqft)
+  - Filter by status
+  - Sort by unit number, rent, status
+
+□ Create unit form (/properties/[propertyId]/units/new)
+  - Unit number, floor
+  - Bedrooms, bathrooms (decimal support)
+  - Square footage
+  - Monthly rent, security deposit
+  - Amenities (multi-select tags)
+  - Description
+
+□ Edit unit page (/units/[id]/edit)
+  - Update unit details
+  - Change status manually
+  - Archive unit
+
+□ Unit detail page (/units/[id])
+  - Current lease information
+  - Payment history
+  - Maintenance history
+  - Documents related to unit
+
+
+================================================================================
+5. PHASE 4: LEASE & TENANT MANAGEMENT
+================================================================================
+
+5.1 TENANT MANAGEMENT
+---------------------
+□ Tenants list page (/tenants)
+  - Search by name, email, phone
+  - Filter by active/inactive leases
+  - Pagination
+  - Tenant cards with photo and contact info
+
+□ Create tenant form (/tenants/new)
+  - Personal information (name, email, phone, DOB)
+  - Emergency contact details
+  - Government ID upload
+  - Optional user account link
+  - Notes field
+
+□ Tenant detail page (/tenants/[id])
+  - Contact information
+  - Current and past leases
+  - Payment history
+  - Maintenance requests
+  - Documents
+  - Edit tenant button
+
+5.2 LEASE MANAGEMENT
+--------------------
+□ Leases list page (/leases)
+  - Filter by status (active, pending, expired)
+  - Search by tenant name, unit
+  - Sort by start/end date
+  - Status badges
+
+□ Create lease form (/leases/new)
+  - Step 1: Select unit (show only available units)
+  - Step 2: Select/create tenant(s)
+  - Step 3: Lease terms
+    * Start and end dates
+    * Monthly rent amount
+    * Security deposit
+    * Due day of month
+    * Late fee settings
+  - Step 4: Upload lease document (PDF)
+  - Step 5: Review and confirm
+
+□ Lease detail page (/leases/[id])
+  - Lease information summary
+  - Tenant(s) information
+  - Payment schedule and history
+  - Lease document download
+  - Actions: Renew, terminate, edit
+
+□ Lease status automation
+  - Auto-mark as active on start date
+  - Auto-mark as expired on end date
+  - Update unit status based on lease status
+  - Notification system for expiring leases
+
+□ Lease renewal workflow
+  - Duplicate existing lease
+  - Update dates and terms
+  - Generate new lease document
+  - Mark old lease as expired
+
+
+================================================================================
+6. PHASE 5: PAYMENT TRACKING
+================================================================================
+
+6.1 PAYMENT DASHBOARD
+---------------------
+□ Payments overview page (/payments)
+  - Monthly revenue chart
+  - Overdue payments alert banner
+  - Payment status summary (paid, partial, overdue)
+  - Filter by property, status, date range
+  - Export to CSV
+
+□ Payment list/table
+  - Tenant name
+  - Unit/property
+  - Amount due
+  - Due date
+  - Status badge
+  - Quick actions (mark as paid, view details)
+
+6.2 PAYMENT RECORDING
+---------------------
+□ Record payment modal/page
+  - Payment amount (auto-fill from rent)
+  - Payment date
+  - Payment method (dropdown)
+  - Transaction reference
+  - Late fee calculation (if overdue)
+  - Notes field
+  - Receipt generation
+
+□ Automatic payment generation
+  - Create monthly payment records on lease activation
+  - Calculate due dates based on lease settings
+  - Auto-mark as overdue after due date
+
+6.3 PAYMENT HISTORY & REPORTS
+-----------------------------
+□ Payment history by lease
+  - Timeline view of all payments
+  - Paid vs overdue visualization
+  - Download payment receipts
+
+□ Revenue reports
+  - Monthly/yearly revenue by property
+  - Collection rate (paid vs total due)
+  - Outstanding balance report
+  - Tenant payment reliability
+
+
+================================================================================
+7. PHASE 6: MAINTENANCE SYSTEM
+================================================================================
+
+7.1 MAINTENANCE REQUEST SUBMISSION
+----------------------------------
+□ Tenant maintenance request form (/maintenance/new)
+  - Title and description
+  - Category (dropdown: plumbing, electrical, HVAC, etc.)
+  - Priority selection (tenant can choose)
+  - Location details within unit
+  - Image upload (multiple images)
+  - Submit for their active units only
+
+□ Owner/Manager create maintenance request
+  - Same form as above
+  - Can create for any unit they manage
+  - Can assign to vendor immediately
+
+7.2 MAINTENANCE TRACKING
+------------------------
+□ Maintenance list page (/maintenance)
+  - Filter by status, priority, property, unit
+  - Sort by date, priority
+  - Color-coded priority badges
+  - Quick status update
+  - Assign to vendor/technician
+
+□ Maintenance detail page (/maintenance/[id])
+  - Full request details
+  - Image gallery
+  - Status timeline
+  - Cost tracking (estimated vs actual)
+  - Resolution notes
+  - Update status form
+  - Schedule maintenance date
+
+7.3 MAINTENANCE WORKFLOW
+------------------------
+□ Status transitions:
+  - submitted → in_progress → completed
+  - Add cancel option with reason
+
+□ Notifications:
+  - Tenant notified when status changes
+  - Owner/manager notified of new requests
+  - Escalation for urgent priorities
+
+□ Vendor management
+  - Assigned vendor name field
+  - Schedule date/time picker
+  - Cost estimate and actual cost tracking
+
+
+================================================================================
+8. PHASE 7: DOCUMENT MANAGEMENT
+================================================================================
+
+8.1 DOCUMENT UPLOAD & STORAGE
+-----------------------------
+□ Document upload component (reusable)
+  - Drag & drop or file select
+  - File type validation (PDF, images, docs)
+  - File size limit (10MB)
+  - Upload to Supabase Storage
+  - Progress indicator
+
+□ Document association
+  - Link to property
+  - Link to unit
+  - Link to lease
+  - Link to tenant
+  - Multi-entity support
+
+8.2 DOCUMENT MANAGEMENT UI
+--------------------------
+□ Documents list within each entity page
+  - Document name
+  - File type icon
+  - Upload date
+  - Uploaded by
+  - Download button
+  - Delete button (with confirmation)
+
+□ Document viewer
+  - PDF inline viewer
+  - Image preview
+  - Download original file
+
+8.3 DOCUMENT CATEGORIES
+-----------------------
+□ Suggested document types:
+  - Lease agreements
+  - Inspection reports
+  - Insurance documents
+  - Tax documents
+  - Tenant applications
+  - Government IDs
+  - Maintenance receipts
+
+
+================================================================================
+9. PHASE 8: DASHBOARD & ANALYTICS
+================================================================================
+
+9.1 OWNER DASHBOARD (/dashboard)
+--------------------------------
+□ Key metrics cards:
+  - Total properties
+  - Total units (occupied/total)
+  - Monthly revenue
+  - Outstanding payments
+
+□ Charts and visualizations:
+  - Revenue trend (last 12 months)
+  - Occupancy rate by property
+  - Maintenance requests by status
+  - Payment collection rate
+
+□ Recent activity feed:
+  - New lease signings
+  - Payment receipts
+  - Maintenance requests
+  - Expiring leases (next 30 days)
+
+□ Quick actions:
+  - Add new property
+  - Create lease
+  - Record payment
+  - View overdue payments
+
+9.2 MANAGER DASHBOARD
+---------------------
+□ Similar to owner dashboard but filtered to assigned properties
+□ Task list:
+  - Pending maintenance requests
+  - Upcoming lease expirations
+  - Overdue payments to follow up
+
+9.3 TENANT DASHBOARD
+--------------------
+□ Current lease information
+  - Unit details
+  - Lease start/end dates
+  - Monthly rent amount
+
+□ Payment section:
+  - Next payment due
+  - Payment history
+  - Download receipts
+
+□ Maintenance requests:
+  - Submit new request
+  - Track existing requests
+  - View resolution status
+
+□ Documents:
+  - View lease agreement
+  - Access shared documents
+
+
+================================================================================
+10. PHASE 9: TESTING & QUALITY ASSURANCE
+================================================================================
+
+10.1 UNIT TESTING
+----------------
+□ Setup testing framework (Jest + React Testing Library)
+□ Test utility functions
+□ Test custom hooks
+□ Test form validation (Zod schemas)
+□ Test Supabase client functions
+
+10.2 INTEGRATION TESTING
+-----------------------
+□ Test authentication flows
+□ Test CRUD operations for each entity
+□ Test RLS policies (ensure proper access control)
+□ Test file upload/download
+□ Test payment calculations
+
+10.3 E2E TESTING
+---------------
+□ Setup Playwright or Cypress
+□ Test critical user flows:
+  - Sign up and login
+  - Create property → add unit → create lease
+  - Record payment
+  - Submit maintenance request
+  - Upload documents
+
+10.4 MANUAL TESTING CHECKLIST
+----------------------------
+□ Test on different browsers (Chrome, Firefox, Safari, Edge)
+□ Mobile responsiveness testing
+□ Test all user roles separately
+□ Verify email notifications
+□ Test edge cases (empty states, error states)
+□ Performance testing (large datasets)
+
+
+================================================================================
+11. PHASE 10: DEPLOYMENT & PRODUCTION
+================================================================================
+
+11.1 PRE-DEPLOYMENT
+------------------
+□ Environment variables setup
+□ Database migrations tested
+□ Supabase project in production mode
+□ Error tracking setup (Sentry or similar)
+□ Analytics setup (Google Analytics, Plausible)
+
+11.2 DEPLOYMENT
+--------------
+□ Deploy to Vercel:
+  - Connect GitHub repository
+  - Configure environment variables
+  - Setup custom domain
+  - Enable auto-deployments
+
+□ Database deployment:
+  - Run schema on production Supabase
+  - Setup backup schedule
+  - Configure monitoring
+
+11.3 POST-DEPLOYMENT
+-------------------
+□ Monitor error logs
+□ Performance monitoring
+□ User feedback collection
+□ Setup staging environment
+□ Documentation for users
+
+
+================================================================================
+12. TECHNICAL ARCHITECTURE
+================================================================================
+
+12.1 FOLDER STRUCTURE
+--------------------
+property-management/
+├── src/
+│   ├── app/                    # Next.js app router
+│   │   ├── (auth)/             # Auth layout group
+│   │   │   ├── login/
+│   │   │   ├── signup/
+│   │   │   └── forgot-password/
+│   │   ├── (dashboard)/        # Dashboard layout group
+│   │   │   ├── dashboard/
+│   │   │   ├── properties/
+│   │   │   ├── units/
+│   │   │   ├── leases/
+│   │   │   ├── tenants/
+│   │   │   ├── payments/
+│   │   │   ├── maintenance/
+│   │   │   └── documents/
+│   │   ├── api/                # API routes
+│   │   └── layout.tsx
+│   ├── components/
+│   │   ├── ui/                 # Base components
+│   │   │   ├── button.tsx
+│   │   │   ├── input.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── table.tsx
+│   │   │   ├── modal.tsx
+│   │   │   └── ...
+│   │   ├── forms/              # Form components
+│   │   ├── layouts/            # Layout components
+│   │   ├── properties/         # Property-specific
+│   │   ├── leases/             # Lease-specific
+│   │   └── ...
+│   ├── lib/
+│   │   ├── supabase/
+│   │   │   ├── client.ts       # Browser client
+│   │   │   ├── server.ts       # Server client
+│   │   │   └── storage.ts      # Storage helpers
+│   │   ├── validations/        # Zod schemas
+│   │   └── utils.ts
+│   ├── types/
+│   │   ├── database.ts         # Generated from Supabase
+│   │   ├── property.ts
+│   │   ├── lease.ts
+│   │   └── ...
+│   ├── hooks/
+│   │   ├── use-user.ts
+│   │   ├── use-properties.ts
+│   │   ├── use-leases.ts
+│   │   └── ...
+│   └── utils/
+│       ├── date-helpers.ts
+│       ├── currency.ts
+│       └── ...
+├── public/
+├── docs/
+└── ...
+
+12.2 DATA FLOW
+-------------
+Client → Next.js Server Components → Supabase Client → PostgreSQL
+                                  ↓
+                            Row Level Security (RLS)
+                                  ↓
+                           Authorized Data Only
+
+12.3 STATE MANAGEMENT
+--------------------
+- Server Components for data fetching (default)
+- React Server Actions for mutations
+- Local state with useState for UI
+- URL state for filters/pagination
+- Context API for global user state
+
+12.4 KEY UTILITIES
+-----------------
+□ Date formatting (date-fns):
+  - formatDate(date, format)
+  - calculateDaysBetween(start, end)
+  - isOverdue(dueDate)
+
+□ Currency formatting:
+  - formatCurrency(amount)
+  - parseCurrency(string)
+
+□ File handling:
+  - uploadFile(file, bucket, path)
+  - getPublicUrl(path)
+  - deleteFile(path)
+
+□ Validation schemas (Zod):
+  - propertySchema
+  - unitSchema
+  - leaseSchema
+  - tenantSchema
+  - paymentSchema
+  - maintenanceSchema
+
+
+================================================================================
+13. SECURITY CONSIDERATIONS
+================================================================================
+
+13.1 AUTHENTICATION SECURITY
+----------------------------
+✓ Supabase Auth with RLS policies
+□ Implement rate limiting for login attempts
+□ Strong password requirements
+□ Email verification for new accounts
+□ Secure session management with httpOnly cookies
+□ CSRF protection (Next.js built-in)
+
+13.2 AUTHORIZATION
+-----------------
+✓ Row Level Security policies on all tables
+□ Server-side permission checks before mutations
+□ Role-based UI rendering
+□ API route protection with middleware
+□ Verify user has access to resources
+
+13.3 DATA SECURITY
+-----------------
+□ Input validation on client and server
+□ SQL injection prevention (using Supabase client)
+□ XSS prevention (React auto-escaping)
+□ File upload validation:
+  - File type whitelist
+  - File size limits
+  - Malware scanning (if budget allows)
+  - Unique filenames to prevent overwrites
+
+13.4 PRIVACY
+-----------
+□ HTTPS only (enforced by Vercel)
+□ Sensitive data encryption at rest (Supabase)
+□ Personal data handling compliance
+□ Secure document storage with signed URLs
+□ Audit logs for sensitive operations
+
+
+================================================================================
+14. FUTURE ENHANCEMENTS
+================================================================================
+
+14.1 PHASE 2 FEATURES (Post-MVP)
+-------------------------------
+□ Email notifications:
+  - Payment reminders
+  - Lease expiration notices
+  - Maintenance status updates
+  - New document uploaded
+
+□ SMS notifications (via Twilio)
+□ Calendar integration for maintenance
+□ Automated rent collection (Stripe/Plaid)
+□ Tenant portal with online payment
+□ Mobile app (React Native)
+□ Multi-language support (i18n)
+□ Advanced reporting and exports
+□ Vendor management system
+□ Inspection checklists
+□ AI-powered maintenance categorization
+□ Bulk operations (import tenants, units)
+□ Advanced search with filters
+□ Property comparison tool
+□ Lease template builder
+
+14.2 INTEGRATIONS
+----------------
+□ Accounting software (QuickBooks, Xero)
+□ Background check services (for tenant screening)
+□ Credit check services
+□ Insurance providers
+□ Smart home integrations
+□ Weather API (for maintenance alerts)
+
+
+================================================================================
+DEVELOPMENT TIMELINE ESTIMATE
+================================================================================
+
+This plan is organized by priority and dependencies. Focus on completing
+each phase before moving to the next:
+
+IMMEDIATE PRIORITIES (Foundation):
+- Phase 1: Project setup and configuration
+- Phase 2: Authentication system
+
+CORE FEATURES (MVP):
+- Phase 3: Property and unit management
+- Phase 4: Lease and tenant management
+- Phase 5: Payment tracking
+- Phase 6: Maintenance requests
+
+POLISHING:
+- Phase 7: Document management
+- Phase 8: Dashboards and analytics
+
+LAUNCH PREPARATION:
+- Phase 9: Testing
+- Phase 10: Deployment
+
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. Setup Supabase project and get credentials
+2. Add environment variables to .env.local
+3. Run database schema in Supabase SQL editor
+4. Configure Supabase Storage buckets
+5. Begin Phase 2: Authentication implementation
+
+Good luck with your property management system! 🏢🔑
