@@ -2,21 +2,29 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { signIn } from '@/lib/actions/auth';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const searchParams = useSearchParams();
+  const errorParam = searchParams.get('error');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (formData: FormData) => {
     setIsLoading(true);
-    // Add authentication logic here
-    setTimeout(() => setIsLoading(false), 1000);
+    setError(null);
+
+    const result = await signIn(formData);
+
+    if (result?.error) {
+      setError(result.error);
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -38,22 +46,26 @@ export default function LoginPage() {
             <CardDescription>Sign in to your account to continue</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form action={handleSubmit} className="space-y-4">
+              {(error || errorParam) && (
+                <div className="p-3 rounded-md bg-red-50 text-red-600 text-sm">
+                  {error || errorParam}
+                </div>
+              )}
+
               <Input
                 label="Email"
+                name="email"
                 type="email"
                 placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 required
               />
 
               <Input
                 label="Password"
+                name="password"
                 type="password"
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 required
               />
 

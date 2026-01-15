@@ -1,67 +1,82 @@
 'use client';
 
-import { ArrowLeft, Edit, MapPin, Plus } from 'lucide-react';
+import { useState, useEffect, use } from 'react';
+import { ArrowLeft, Edit, MapPin, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PropertyForm } from '@/components/properties/property-form';
+import { getProperty, deleteProperty } from '@/lib/actions/properties';
+import { Property } from '@/types';
 
-// Mock data - replace with actual data fetching
-const mockProperty = {
-  id: '1',
-  name: 'Sunset Apartments',
-  address_line1: '123 Main Street',
-  address_line2: 'Suite 100',
-  city: 'Los Angeles',
-  state: 'CA',
-  zip_code: '90001',
-  property_type: 'residential' as const,
-  total_units: 24,
-  description: 'A beautiful apartment complex with modern amenities and convenient location.',
-};
+export default function PropertyDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
+  const [property, setProperty] = useState<Property | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-const mockUnits = [
-  {
-    id: '1',
-    unit_number: '101',
-    bedrooms: 2,
-    bathrooms: 1,
-    square_feet: 850,
-    monthly_rent: 1500,
-    status: 'occupied' as const,
-  },
-  {
-    id: '2',
-    unit_number: '102',
-    bedrooms: 1,
-    bathrooms: 1,
-    square_feet: 650,
-    monthly_rent: 1200,
-    status: 'available' as const,
-  },
-  {
-    id: '3',
-    unit_number: '201',
-    bedrooms: 2,
-    bathrooms: 2,
-    square_feet: 950,
-    monthly_rent: 1800,
-    status: 'maintenance' as const,
-  },
-];
+  const fetchProperty = async () => {
+    setIsLoading(true);
+    const result = await getProperty(id);
 
-export default function PropertyDetailPage({ params }: { params: { id: string } }) {
-  const property = mockProperty;
-  const units = mockUnits;
-
-  const statusColors = {
-    available: 'success' as const,
-    occupied: 'primary' as const,
-    maintenance: 'warning' as const,
-    unavailable: 'danger' as const,
+    if (result.data && !Array.isArray(result.data)) {
+      setProperty(result.data);
+    }
+    setIsLoading(false);
   };
+
+  useEffect(() => {
+    fetchProperty();
+  }, [id]);
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this property?')) return;
+
+    setIsDeleting(true);
+    const result = await deleteProperty(id);
+
+    if (result.success) {
+      router.push('/properties');
+    } else {
+      alert(result.error || 'Failed to delete property');
+      setIsDeleting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="h-12 w-64 bg-gray-100 animate-pulse rounded" />
+          <div className="grid gap-6 md:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 bg-gray-100 animate-pulse rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!property) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold text-gray-900">Property not found</h2>
+          <p className="text-gray-600 mt-2">The property you're looking for doesn't exist.</p>
+          <Link href="/properties">
+            <Button className="mt-4">Back to Properties</Button>
+          </Link>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -82,9 +97,13 @@ export default function PropertyDetailPage({ params }: { params: { id: string } 
               </span>
             </div>
           </div>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setIsEditOpen(true)}>
             <Edit className="h-4 w-4" />
             Edit Property
+          </Button>
+          <Button variant="danger" onClick={handleDelete} isLoading={isDeleting}>
+            <Trash2 className="h-4 w-4" />
+            Delete
           </Button>
         </div>
 
@@ -112,11 +131,11 @@ export default function PropertyDetailPage({ params }: { params: { id: string } 
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Occupancy Rate</CardTitle>
+              <CardTitle className="text-base">Location</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">
-                {Math.round((1 / units.length) * 100)}%
+              <p className="text-gray-600">
+                {property.city}, {property.state}
               </p>
             </CardContent>
           </Card>
@@ -134,7 +153,7 @@ export default function PropertyDetailPage({ params }: { params: { id: string } 
           </Card>
         )}
 
-        {/* Units */}
+        {/* Units Placeholder */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -158,33 +177,24 @@ export default function PropertyDetailPage({ params }: { params: { id: string } 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {units.map((unit) => (
-                  <TableRow key={unit.id}>
-                    <TableCell className="font-medium">{unit.unit_number}</TableCell>
-                    <TableCell>
-                      {unit.bedrooms} / {unit.bathrooms}
-                    </TableCell>
-                    <TableCell>{unit.square_feet} sq ft</TableCell>
-                    <TableCell>${unit.monthly_rent}/mo</TableCell>
-                    <TableCell>
-                      <Badge variant={statusColors[unit.status]} className="capitalize">
-                        {unit.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Link href={`/units/${unit.id}`}>
-                        <Button variant="ghost" size="sm">
-                          View
-                        </Button>
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    No units added yet. Click "Add Unit" to get started.
+                  </TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Property Modal */}
+      <PropertyForm
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        property={property}
+        onSuccess={fetchProperty}
+      />
     </DashboardLayout>
   );
 }

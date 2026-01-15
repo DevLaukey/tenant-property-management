@@ -6,20 +6,27 @@ import { Building2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { resetPassword } from '@/lib/actions/auth';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (formData: FormData) => {
     setIsLoading(true);
-    // Add password reset logic here
-    setTimeout(() => {
+    setError(null);
+
+    const result = await resetPassword(formData);
+
+    if (result?.error) {
+      setError(result.error);
+      setIsLoading(false);
+    } else if (result?.success) {
       setIsLoading(false);
       setIsSubmitted(true);
-    }, 1000);
+    }
   };
 
   return (
@@ -46,9 +53,16 @@ export default function ForgotPasswordPage() {
           </CardHeader>
           <CardContent>
             {!isSubmitted ? (
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form action={handleSubmit} className="space-y-4">
+                {error && (
+                  <div className="p-3 rounded-md bg-red-50 text-red-600 text-sm">
+                    {error}
+                  </div>
+                )}
+
                 <Input
                   label="Email"
+                  name="email"
                   type="email"
                   placeholder="you@example.com"
                   value={email}

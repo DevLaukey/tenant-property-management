@@ -7,22 +7,35 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { signUp } from '@/lib/actions/auth';
 
 export default function SignupPage() {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: '',
-  });
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (formData: FormData) => {
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
     setIsLoading(true);
-    // Add registration logic here
-    setTimeout(() => setIsLoading(false), 1000);
+
+    const result = await signUp(formData);
+
+    if (result?.error) {
+      setError(result.error);
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -44,44 +57,48 @@ export default function SignupPage() {
             <CardDescription>Get started with your property management</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form action={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="p-3 rounded-md bg-red-50 text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
+
               <Input
                 label="Full Name"
+                name="fullName"
                 type="text"
                 placeholder="John Doe"
-                value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                 required
               />
 
               <Input
                 label="Email"
+                name="email"
                 type="email"
                 placeholder="you@example.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
               />
 
               <Select
                 label="I am a..."
+                name="role"
                 options={[
                   { value: 'owner', label: 'Property Owner' },
                   { value: 'property_manager', label: 'Property Manager' },
                   { value: 'tenant', label: 'Tenant' },
                 ]}
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 required
               />
 
               <Input
                 label="Password"
+                name="password"
                 type="password"
                 placeholder="••••••••"
                 helperText="Must be at least 8 characters"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
               />
 
@@ -89,8 +106,8 @@ export default function SignupPage() {
                 label="Confirm Password"
                 type="password"
                 placeholder="••••••••"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
 
