@@ -3,6 +3,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { UserRole } from '@/types';
+import { cookies } from 'next/headers'
+
 
 export type AuthResult = {
   error?: string;
@@ -10,8 +12,8 @@ export type AuthResult = {
 };
 
 export async function signUp(formData: FormData): Promise<AuthResult> {
-  const supabase = await createClient();
-
+  const cookieStore = await cookies()
+  const supabase = createClient(cookieStore)
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
   const fullName = formData.get('fullName') as string;
@@ -25,7 +27,7 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
     return { error: 'Password must be at least 8 characters' };
   }
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -45,7 +47,7 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
 }
 
 export async function signIn(formData: FormData): Promise<AuthResult> {
-  const supabase = await createClient();
+  const supabase = await createServerSupabaseClient();
 
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
@@ -67,13 +69,13 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
 }
 
 export async function signOut(): Promise<void> {
-  const supabase = await createClient();
+  const supabase = await createServerSupabaseClient();
   await supabase.auth.signOut();
   redirect('/login');
 }
 
 export async function resetPassword(formData: FormData): Promise<AuthResult> {
-  const supabase = await createClient();
+  const supabase = await createServerSupabaseClient();
 
   const email = formData.get('email') as string;
 

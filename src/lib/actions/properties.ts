@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createServerSupabaseClient, getUser } from '@/lib/supabase/server';
+import { createClient, getUser } from '@/lib/supabase/server';
 import { Property, PropertyType } from '@/types';
 
 export type PropertyResult = {
@@ -17,7 +17,7 @@ export type PropertyFilters = {
 };
 
 export async function getProperties(filters?: PropertyFilters): Promise<PropertyResult> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createClient();
   const { user } = await getUser();
 
   if (!user) {
@@ -54,7 +54,7 @@ export async function getProperties(filters?: PropertyFilters): Promise<Property
 }
 
 export async function getProperty(id: string): Promise<PropertyResult> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createClient();
   const { user } = await getUser();
 
   if (!user) {
@@ -75,7 +75,7 @@ export async function getProperty(id: string): Promise<PropertyResult> {
 }
 
 export async function createProperty(formData: FormData): Promise<PropertyResult> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createClient();
   const { user } = await getUser();
 
   if (!user) {
@@ -122,7 +122,7 @@ export async function createProperty(formData: FormData): Promise<PropertyResult
 }
 
 export async function updateProperty(id: string, formData: FormData): Promise<PropertyResult> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createClient();
   const { user } = await getUser();
 
   if (!user) {
@@ -167,7 +167,7 @@ export async function updateProperty(id: string, formData: FormData): Promise<Pr
 }
 
 export async function deleteProperty(id: string): Promise<PropertyResult> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createClient();
   const { user } = await getUser();
 
   if (!user) {
