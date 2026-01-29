@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { ArrowLeft, Edit, MapPin, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, MapPin, Plus, Trash2, Home } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
@@ -10,15 +10,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PropertyForm } from '@/components/properties/property-form';
+import { UnitForm } from '@/components/units/unit-form';
 import { getProperty, deleteProperty } from '@/lib/actions/properties';
-import { Property } from '@/types';
+import { getUnits } from '@/lib/actions/units';
+import { Property, Unit, UnitStatus } from '@/types';
+import { formatCurrency } from '@/lib/utils';
+
+const unitStatusConfig: Record<UnitStatus, { label: string; variant: 'success' | 'warning' | 'danger' | 'default' }> = {
+  available: { label: 'Available', variant: 'success' },
+  occupied: { label: 'Occupied', variant: 'default' },
+  maintenance: { label: 'Maintenance', variant: 'warning' },
+  unavailable: { label: 'Unavailable', variant: 'danger' },
+};
 
 export default function PropertyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const [property, setProperty] = useState<Property | null>(null);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isUnitFormOpen, setIsUnitFormOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchProperty = async () => {
@@ -31,8 +43,16 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
     setIsLoading(false);
   };
 
+  const fetchUnits = async () => {
+    const result = await getUnits(id);
+    if (result.data && Array.isArray(result.data)) {
+      setUnits(result.data);
+    }
+  };
+
   useEffect(() => {
     fetchProperty();
+    fetchUnits();
   }, [id]);
 
   const handleDelete = async () => {
@@ -153,12 +173,12 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
           </Card>
         )}
 
-        {/* Units Placeholder */}
+        {/* Units Section */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Units</CardTitle>
-              <Button size="sm">
+              <CardTitle>Units ({units.length})</CardTitle>
+              <Button size="sm" onClick={() => setIsUnitFormOpen(true)}>
                 <Plus className="h-4 w-4" />
                 Add Unit
               </Button>
@@ -177,11 +197,38 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                    No units added yet. Click "Add Unit" to get started.
-                  </TableCell>
-                </TableRow>
+                {units.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <Home className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                      No units added yet. Click "Add Unit" to get started.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  units.map((unit) => {
+                    const statusInfo = unitStatusConfig[unit.status];
+                    return (
+                      <TableRow key={unit.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">{unit.unit_number}</TableCell>
+                        <TableCell>
+                          {unit.bedrooms ?? '-'} / {unit.bathrooms ?? '-'}
+                        </TableCell>
+                        <TableCell>{unit.square_feet ? `${unit.square_feet}` : '-'}</TableCell>
+                        <TableCell>{formatCurrency(unit.monthly_rent)}</TableCell>
+                        <TableCell>
+                          <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Link href={`/units/${unit.id}`}>
+                            <Button variant="ghost" size="sm">
+                              View
+                            </Button>
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -194,6 +241,14 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
         onClose={() => setIsEditOpen(false)}
         property={property}
         onSuccess={fetchProperty}
+      />
+
+      {/* Add Unit Modal */}
+      <UnitForm
+        isOpen={isUnitFormOpen}
+        onClose={() => setIsUnitFormOpen(false)}
+        propertyId={id}
+        onSuccess={fetchUnits}
       />
     </DashboardLayout>
   );

@@ -118,7 +118,7 @@ export default function LeasesPage() {
                     </TableCell>
                     <TableCell>{new Date(lease.start_date).toLocaleDateString()}</TableCell>
                     <TableCell>{new Date(lease.end_date).toLocaleDateString()}</TableCell>
-                    <TableCell>${lease.monthly_rent}/mo</TableCell>
+                    <TableCell>Ksh. {lease.monthly_rent.toLocaleString()}/mo</TableCell>
                     <TableCell>
                       <Badge variant={statusColors[lease.status]} className="capitalize">
                         {lease.status}

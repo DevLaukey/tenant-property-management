@@ -2,12 +2,22 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient, getUser } from '@/lib/supabase/server';
-import { Unit, UnitStatus } from '@/types';
+import { Unit, UnitStatus, Property } from '@/types';
+
+export type UnitWithProperty = Unit & {
+  property: Pick<Property, 'id' | 'name' | 'address_line1' | 'city' | 'state'>;
+};
 
 export type UnitResult = {
   error?: string;
   success?: boolean;
-  data?: Unit | Unit[];
+  data?: Unit | Unit[] | UnitWithProperty | UnitWithProperty[];
+};
+
+export type UnitFilters = {
+  search?: string;
+  status?: UnitStatus;
+  propertyId?: string;
 };
 
 export async function getUnits(propertyId: string): Promise<UnitResult> {
@@ -32,6 +42,47 @@ export async function getUnits(propertyId: string): Promise<UnitResult> {
   return { data: data as Unit[] };
 }
 
+export async function getAllUnits(filters?: UnitFilters): Promise<UnitResult> {
+  const supabase = await createClient();
+  const { user } = await getUser();
+
+  if (!user) {
+    return { error: 'Not authenticated' };
+  }
+
+  let query = supabase
+    .from('units')
+    .select(`
+      *,
+      property:properties!inner(id, name, address_line1, city, state, owner_id)
+    `)
+    .eq('is_archived', false)
+    .eq('property.owner_id', user.id)
+    .order('created_at', { ascending: false });
+
+  if (filters?.status) {
+    query = query.eq('status', filters.status);
+  }
+
+  if (filters?.propertyId) {
+    query = query.eq('property_id', filters.propertyId);
+  }
+
+  if (filters?.search) {
+    query = query.or(
+      `unit_number.ilike.%${filters.search}%,description.ilike.%${filters.search}%`
+    );
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { data: data as UnitWithProperty[] };
+}
+
 export async function getUnit(id: string): Promise<UnitResult> {
   const supabase = await createClient();
   const { user } = await getUser();
@@ -42,7 +93,10 @@ export async function getUnit(id: string): Promise<UnitResult> {
 
   const { data, error } = await supabase
     .from('units')
-    .select('*')
+    .select(`
+      *,
+      property:properties!inner(id, name, address_line1, city, state, owner_id)
+    `)
     .eq('id', id)
     .single();
 
@@ -50,7 +104,7 @@ export async function getUnit(id: string): Promise<UnitResult> {
     return { error: error.message };
   }
 
-  return { data: data as Unit };
+  return { data: data as UnitWithProperty };
 }
 
 export async function createUnit(propertyId: string, formData: FormData): Promise<UnitResult> {
@@ -97,6 +151,7 @@ export async function createUnit(propertyId: string, formData: FormData): Promis
   }
 
   revalidatePath(`/properties/${propertyId}`);
+  revalidatePath('/units');
   return { success: true, data: data as Unit };
 }
 
@@ -140,6 +195,8 @@ export async function updateUnit(id: string, propertyId: string, formData: FormD
   }
 
   revalidatePath(`/properties/${propertyId}`);
+  revalidatePath('/units');
+  revalidatePath(`/units/${id}`);
   return { success: true, data: data as Unit };
 }
 
@@ -162,5 +219,6 @@ export async function deleteUnit(id: string, propertyId: string): Promise<UnitRe
   }
 
   revalidatePath(`/properties/${propertyId}`);
+  revalidatePath('/units');
   return { success: true };
 }

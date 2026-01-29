@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { DollarSign, Download, TrendingUp, AlertCircle } from 'lucide-react';
+import { Banknote, Download, TrendingUp, AlertCircle } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -85,13 +85,13 @@ export default function PaymentsPage() {
         <div className="grid gap-6 md:grid-cols-3">
           <StatCard
             title="Total Revenue (This Month)"
-            value={`$${totalRevenue.toLocaleString()}`}
-            icon={<DollarSign className="h-6 w-6" />}
+            value={`Ksh. ${totalRevenue.toLocaleString()}`}
+            icon={<Banknote className="h-6 w-6" />}
             trend={{ value: '12% from last month', isPositive: true }}
           />
           <StatCard
             title="Overdue Payments"
-            value={`$${overdueAmount.toLocaleString()}`}
+            value={`Ksh. ${overdueAmount.toLocaleString()}`}
             icon={<AlertCircle className="h-6 w-6" />}
             className="border-red-200"
           />
@@ -145,7 +145,7 @@ export default function PaymentsPage() {
                   <TableCell>
                     {payment.property_name} - Unit {payment.unit_number}
                   </TableCell>
-                  <TableCell>${payment.amount.toLocaleString()}</TableCell>
+                  <TableCell>Ksh. {payment.amount.toLocaleString()}</TableCell>
                   <TableCell>{new Date(payment.due_date).toLocaleDateString()}</TableCell>
                   <TableCell>
                     {payment.paid_date

@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, DollarSign, FileText, Users, AlertCircle, Wrench } from 'lucide-react';
+import { Building2, Banknote, FileText, Users, AlertCircle, Wrench } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ const recentActivities = [
     id: '1',
     type: 'payment',
     description: 'Payment received from John Smith',
-    amount: '$1,500',
+    amount: 'Ksh. 1,500',
     time: '2 hours ago',
   },
   {
@@ -81,8 +81,8 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Monthly Revenue"
-            value="$68,500"
-            icon={<DollarSign className="h-6 w-6" />}
+            value="Ksh. 68,500"
+            icon={<Banknote className="h-6 w-6" />}
             trend={{ value: '12% from last month', isPositive: true }}
           />
         </div>
@@ -95,7 +95,7 @@ export default function DashboardPage() {
               <div className="flex-1">
                 <h3 className="font-semibold text-orange-900">Attention Required</h3>
                 <p className="text-sm text-orange-800 mt-1">
-                  You have 3 overdue payments totaling $5,200 and 2 urgent maintenance requests.
+                  You have 3 overdue payments totaling Ksh. 5,200 and 2 urgent maintenance requests.
                 </p>
                 <div className="flex gap-3 mt-3">
                   <Button variant="outline" size="sm">
@@ -133,7 +133,7 @@ export default function DashboardPage() {
                             : 'bg-orange-100 text-orange-600'
                         }`}
                       >
-                        {activity.type === 'payment' && <DollarSign className="h-5 w-5" />}
+                        {activity.type === 'payment' && <Banknote className="h-5 w-5" />}
                         {activity.type === 'lease' && <FileText className="h-5 w-5" />}
                         {activity.type === 'maintenance' && <Wrench className="h-5 w-5" />}
                       </div>
