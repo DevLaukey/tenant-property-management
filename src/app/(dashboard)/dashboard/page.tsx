@@ -1,56 +1,37 @@
 'use client';
 
-import { Building2, Banknote, FileText, Users, AlertCircle, Wrench } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Building2, Banknote, FileText, Users, AlertCircle, Clock } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-
-// Mock data
-const recentActivities = [
-  {
-    id: '1',
-    type: 'payment',
-    description: 'Payment received from John Smith',
-    amount: 'Ksh. 1,500',
-    time: '2 hours ago',
-  },
-  {
-    id: '2',
-    type: 'lease',
-    description: 'New lease signed - Unit 205',
-    amount: null,
-    time: '5 hours ago',
-  },
-  {
-    id: '3',
-    type: 'maintenance',
-    description: 'Maintenance request submitted - Unit 101',
-    amount: null,
-    time: '1 day ago',
-  },
-];
-
-const upcomingLeases = [
-  {
-    id: '1',
-    tenant_name: 'Emily Brown',
-    unit: 'Unit 305',
-    end_date: '2024-02-28',
-    days_left: 15,
-  },
-  {
-    id: '2',
-    tenant_name: 'Tom Wilson',
-    unit: 'Unit 102',
-    end_date: '2024-03-15',
-    days_left: 30,
-  },
-];
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { getDashboardData, DashboardData } from '@/lib/actions/dashboard';
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    getDashboardData().then((result) => {
+      if (result.data) setData(result.data);
+      setIsLoading(false);
+    });
+  }, []);
+
+  const stats = data?.stats;
+  const recentPayments = data?.recentPayments ?? [];
+  const expiringLeases = data?.expiringLeases ?? [];
+  const unpaidPayments = data?.unpaidPayments ?? [];
+
+  const overdueCount = unpaidPayments.filter((p) => p.status === 'overdue').length;
+  const pendingCount = unpaidPayments.filter((p) => p.status === 'pending').length;
+  const totalUnpaidAmount = unpaidPayments.reduce((s, p) => s + p.amount, 0);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -62,125 +43,249 @@ export default function DashboardPage() {
 
         {/* Stats */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Total Properties"
-            value="12"
-            icon={<Building2 className="h-6 w-6" />}
-            trend={{ value: '2 added this month', isPositive: true }}
-          />
-          <StatCard
-            title="Active Leases"
-            value="45"
-            icon={<FileText className="h-6 w-6" />}
-            trend={{ value: '3 expiring soon', isPositive: false }}
-          />
-          <StatCard
-            title="Total Tenants"
-            value="48"
-            icon={<Users className="h-6 w-6" />}
-          />
-          <StatCard
-            title="Monthly Revenue"
-            value="Ksh. 68,500"
-            icon={<Banknote className="h-6 w-6" />}
-            trend={{ value: '12% from last month', isPositive: true }}
-          />
+          {isLoading ? (
+            <>
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-28 rounded-xl bg-gray-100 animate-pulse" />
+              ))}
+            </>
+          ) : (
+            <>
+              <StatCard
+                title="Total Properties"
+                value={stats?.totalProperties ?? 0}
+                icon={<Building2 className="h-6 w-6" />}
+              />
+              <StatCard
+                title="Active Leases"
+                value={stats?.activeLeases ?? 0}
+                icon={<FileText className="h-6 w-6" />}
+                trend={
+                  expiringLeases.length > 0
+                    ? { value: `${expiringLeases.length} expiring soon`, isPositive: false }
+                    : undefined
+                }
+              />
+              <StatCard
+                title="Total Tenants"
+                value={stats?.totalTenants ?? 0}
+                icon={<Users className="h-6 w-6" />}
+              />
+              <StatCard
+                title="Revenue This Month"
+                value={`Ksh ${(stats?.monthlyRevenue ?? 0).toLocaleString()}`}
+                icon={<Banknote className="h-6 w-6" />}
+              />
+            </>
+          )}
         </div>
 
-        {/* Alerts */}
-        <Card className="border-orange-200 bg-orange-50">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-orange-900">Attention Required</h3>
-                <p className="text-sm text-orange-800 mt-1">
-                  You have 3 overdue payments totaling Ksh. 5,200 and 2 urgent maintenance requests.
+        {/* Outstanding Payments — full-width table */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <div>
+              <CardTitle>Outstanding Payments</CardTitle>
+              {!isLoading && unpaidPayments.length > 0 && (
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {overdueCount > 0 && (
+                    <span className="text-red-600 font-medium">{overdueCount} overdue</span>
+                  )}
+                  {overdueCount > 0 && pendingCount > 0 && <span className="mx-1">·</span>}
+                  {pendingCount > 0 && (
+                    <span className="text-gray-600">{pendingCount} upcoming</span>
+                  )}
+                  <span className="mx-1">·</span>
+                  <span className="font-medium">Ksh {totalUnpaidAmount.toLocaleString()} total</span>
                 </p>
-                <div className="flex gap-3 mt-3">
-                  <Button variant="outline" size="sm">
-                    View Overdue Payments
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    View Maintenance
-                  </Button>
-                </div>
-              </div>
+              )}
             </div>
+            {!isLoading && (
+              <Button variant="outline" size="sm" onClick={() => router.push('/payments')}>
+                View All
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="p-6 space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-12 rounded-lg bg-gray-100 animate-pulse" />
+                ))}
+              </div>
+            ) : unpaidPayments.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tenant</TableHead>
+                    <TableHead>Property / Unit</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {unpaidPayments.map((payment) => {
+                    const isOverdue = payment.status === 'overdue';
+                    return (
+                      <TableRow
+                        key={payment.id}
+                        className={isOverdue ? 'bg-red-50 hover:bg-red-50' : ''}
+                      >
+                        <TableCell className="font-medium">{payment.tenant_name}</TableCell>
+                        <TableCell className="text-gray-600">
+                          {payment.property_name}
+                          {payment.unit_number ? ` — Unit ${payment.unit_number}` : ''}
+                        </TableCell>
+                        <TableCell className={isOverdue ? 'font-semibold text-red-700' : 'font-medium'}>
+                          Ksh {payment.amount.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-gray-600">
+                          {new Date(payment.due_date).toLocaleDateString('en-KE', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={isOverdue ? 'danger' : 'default'} className="capitalize">
+                            {payment.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mb-3">
+                  <Banknote className="h-6 w-6 text-green-600" />
+                </div>
+                <p className="text-sm font-medium text-gray-900">All payments are up to date</p>
+                <p className="text-xs text-gray-500 mt-1">No outstanding or overdue payments.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Recent Activity */}
+          {/* Recent Payments */}
           <Card>
             <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
+              <CardTitle>Recent Payments</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="flex items-center justify-between py-3 border-b last:border-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                          activity.type === 'payment'
-                            ? 'bg-green-100 text-green-600'
-                            : activity.type === 'lease'
-                            ? 'bg-blue-100 text-blue-600'
-                            : 'bg-orange-100 text-orange-600'
-                        }`}
-                      >
-                        {activity.type === 'payment' && <Banknote className="h-5 w-5" />}
-                        {activity.type === 'lease' && <FileText className="h-5 w-5" />}
-                        {activity.type === 'maintenance' && <Wrench className="h-5 w-5" />}
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-14 rounded-lg bg-gray-100 animate-pulse" />
+                  ))}
+                </div>
+              ) : recentPayments.length > 0 ? (
+                <div className="space-y-1">
+                  {recentPayments.map((payment) => (
+                    <div
+                      key={payment.id}
+                      className="flex items-center justify-between py-3 border-b last:border-0"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600 shrink-0">
+                          <Banknote className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{payment.tenant_name}</p>
+                          <p className="text-xs text-gray-500">
+                            {payment.property_name}
+                            {payment.unit_number ? ` — Unit ${payment.unit_number}` : ''}
+                            {' · '}
+                            {new Date(payment.paid_date).toLocaleDateString('en-KE', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {activity.description}
-                        </p>
-                        <p className="text-xs text-gray-500">{activity.time}</p>
-                      </div>
+                      <span className="font-semibold text-green-600 shrink-0">
+                        Ksh {payment.amount.toLocaleString()}
+                      </span>
                     </div>
-                    {activity.amount && (
-                      <span className="font-semibold text-green-600">{activity.amount}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 py-6 text-center">No payments recorded yet.</p>
+              )}
+
+              {!isLoading && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-4"
+                  onClick={() => router.push('/payments')}
+                >
+                  View All Payments
+                </Button>
+              )}
             </CardContent>
           </Card>
 
           {/* Expiring Leases */}
           <Card>
             <CardHeader>
-              <CardTitle>Expiring Leases</CardTitle>
+              <CardTitle>Leases Expiring Soon</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {upcomingLeases.map((lease) => (
-                  <div
-                    key={lease.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-900">{lease.tenant_name}</p>
-                      <p className="text-sm text-gray-600">{lease.unit}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Ends {new Date(lease.end_date).toLocaleDateString()}
-                      </p>
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="h-16 rounded-lg bg-gray-100 animate-pulse" />
+                  ))}
+                </div>
+              ) : expiringLeases.length > 0 ? (
+                <div className="space-y-3">
+                  {expiringLeases.map((lease) => (
+                    <div
+                      key={lease.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
+                    >
+                      <div>
+                        <p className="font-medium text-gray-900">{lease.tenant_name}</p>
+                        <p className="text-sm text-gray-600">
+                          {lease.property_name}
+                          {lease.unit_number ? ` — Unit ${lease.unit_number}` : ''}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Ends{' '}
+                          {new Date(lease.end_date).toLocaleDateString('en-KE', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </p>
+                      </div>
+                      <Badge variant={lease.days_left <= 14 ? 'danger' : 'warning'}>
+                        <Clock className="h-3 w-3 mr-1" />
+                        {lease.days_left}d left
+                      </Badge>
                     </div>
-                    <Badge variant={lease.days_left <= 15 ? 'danger' : 'warning'}>
-                      {lease.days_left} days
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-              <Button variant="outline" size="sm" className="w-full mt-4">
-                View All Leases
-              </Button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 py-6 text-center">
+                  No leases expiring in the next 60 days.
+                </p>
+              )}
+
+              {!isLoading && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-4"
+                  onClick={() => router.push('/leases')}
+                >
+                  View All Leases
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
