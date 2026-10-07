@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient, getUser } from '@/lib/supabase/server';
+import { checkCanAddUnit } from '@/lib/billing/limits';
 import { Unit, UnitStatus, Property } from '@/types';
 
 export type UnitWithProperty = Unit & {
@@ -113,6 +114,11 @@ export async function createUnit(propertyId: string, formData: FormData): Promis
 
   if (!user) {
     return { error: 'Not authenticated' };
+  }
+
+  const limit = await checkCanAddUnit(user.id);
+  if (!limit.allowed) {
+    return { error: limit.error };
   }
 
   const unitNumber = formData.get('unitNumber') as string;

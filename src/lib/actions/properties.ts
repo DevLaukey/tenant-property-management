@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient, getUser } from '@/lib/supabase/server';
+import { checkCanAddProperty } from '@/lib/billing/limits';
 import { Property, PropertyType } from '@/types';
 
 export type PropertyResult = {
@@ -80,6 +81,11 @@ export async function createProperty(formData: FormData): Promise<PropertyResult
 
   if (!user) {
     return { error: 'Not authenticated' };
+  }
+
+  const limit = await checkCanAddProperty(user.id);
+  if (!limit.allowed) {
+    return { error: limit.error };
   }
 
   const name = formData.get('name') as string;

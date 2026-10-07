@@ -1,19 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Building2 } from 'lucide-react';
+import { Building2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { signIn } from '@/lib/actions/auth';
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
+  const messageParam = searchParams.get('message');
 
   const handleSubmit = async (formData: FormData) => {
     setIsLoading(true);
@@ -47,6 +56,13 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form action={handleSubmit} className="space-y-4">
+              {messageParam && !error && (
+                <div className="flex items-start gap-2 p-3 rounded-md bg-green-50 text-green-700 text-sm">
+                  <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{messageParam}</span>
+                </div>
+              )}
+
               {(error || errorParam) && (
                 <div className="p-3 rounded-md bg-red-50 text-red-600 text-sm">
                   {error || errorParam}

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Building2,
+  CreditCard,
   FileText,
   Home,
   LayoutDashboard,
@@ -28,6 +29,7 @@ const navigation = [
   { name: 'Tenants', href: '/tenants', icon: Users },
   { name: 'Payments', href: '/payments', icon: DollarSign },
   { name: 'Maintenance', href: '/maintenance', icon: Wrench },
+  { name: 'Billing', href: '/billing', icon: CreditCard },
 ];
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
