@@ -5,6 +5,8 @@ import { Smartphone, Copy, Check, Info } from 'lucide-react';
 
 interface PaymentInstructionsProps {
   unitNumber: string;
+  /** Property's Equity payment code, e.g. VIV -> account VIV#A1 */
+  paymentCode?: string | null;
   monthlyRent: number;
   tenantName: string;
 }
@@ -30,11 +32,14 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export function PaymentInstructions({ unitNumber, monthlyRent, tenantName }: PaymentInstructionsProps) {
-  const paybillNumber = process.env.NEXT_PUBLIC_PAYBILL_NUMBER ?? '—';
-  const accountName = process.env.NEXT_PUBLIC_PAYBILL_ACCOUNT_NAME ?? 'Family Bank';
-  // Payment reference tenants enter as the M-Pesa account number
-  const accountRef = `UNIT${unitNumber.replace(/\s+/g, '')}`;
+export function PaymentInstructions({ unitNumber, paymentCode, monthlyRent, tenantName }: PaymentInstructionsProps) {
+  // Equity Bank's M-Pesa paybill is 247247
+  const paybillNumber = process.env.NEXT_PUBLIC_PAYBILL_NUMBER || '247247';
+  const accountName = process.env.NEXT_PUBLIC_PAYBILL_ACCOUNT_NAME || 'Equity Bank';
+  // Account reference that Equity reports back to us: CODE#UNIT, e.g. VIV#A1
+  const unitRef = unitNumber.replace(/[^A-Za-z0-9-]/g, '').toUpperCase();
+  const autoMatched = Boolean(paymentCode);
+  const accountRef = autoMatched ? `${paymentCode!.toUpperCase()}#${unitRef}` : `UNIT${unitRef}`;
 
   const steps = [
     { label: 'Open M-Pesa on your phone' },
@@ -109,9 +114,16 @@ export function PaymentInstructions({ unitNumber, monthlyRent, tenantName }: Pay
         {/* Note */}
         <div className="flex items-start gap-2 p-3 rounded-lg bg-green-100 text-green-800 text-xs">
           <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-          <p>
-            After paying, send the <strong>M-Pesa confirmation message</strong> to your landlord so the payment can be recorded in the system.
-          </p>
+          {autoMatched ? (
+            <p>
+              Use the account number <strong>exactly as shown</strong>. Your payment is recorded
+              automatically once Equity Bank confirms it.
+            </p>
+          ) : (
+            <p>
+              After paying, send the <strong>M-Pesa confirmation message</strong> to your landlord so the payment can be recorded in the system.
+            </p>
+          )}
         </div>
       </div>
     </div>

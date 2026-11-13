@@ -35,6 +35,8 @@ export interface Property {
   description?: string;
   total_units: number;
   image_url?: string;
+  /** Equity account reference prefix, e.g. VIV in VIV#A1 */
+  payment_code?: string | null;
   is_archived: boolean;
   created_at: string;
   updated_at: string;
@@ -96,6 +98,8 @@ export interface Payment {
   id: string;
   lease_id: string;
   amount: number;
+  /** Total received so far (for part-payments) */
+  amount_paid?: number;
   due_date: string;
   paid_date?: string;
   payment_method?: string;

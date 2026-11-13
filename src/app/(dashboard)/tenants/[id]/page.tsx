@@ -285,6 +285,7 @@ export default function TenantDetailPage() {
         {tenant.current_lease_id && tenant.current_unit && (
           <PaymentInstructions
             unitNumber={tenant.current_unit}
+            paymentCode={tenant.current_property_code}
             monthlyRent={
               (tenant as any).lease_tenants?.find((lt: any) => lt.lease?.status === 'active')
                 ?.lease?.monthly_rent ?? 0

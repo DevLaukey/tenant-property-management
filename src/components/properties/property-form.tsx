@@ -123,6 +123,16 @@ export function PropertyForm({ isOpen, onClose, property, onSuccess }: PropertyF
           />
         </div>
 
+        <Input
+          label="Equity Payment Code"
+          name="paymentCode"
+          placeholder="e.g., VIV"
+          maxLength={10}
+          defaultValue={property?.payment_code || ''}
+          helperText="Tenants pay with account CODE#UNIT (e.g. VIV#A1). Payments are matched to the unit automatically."
+          style={{ textTransform: 'uppercase' }}
+        />
+
         <Textarea
           label="Description"
           name="description"
