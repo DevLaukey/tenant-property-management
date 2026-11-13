@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient, getUser } from '@/lib/supabase/server';
+import { checkCanAddProperty } from '@/lib/billing/limits';
 import { Property, PropertyType } from '@/types';
 
 export type PropertyResult = {
@@ -15,6 +16,22 @@ export type PropertyFilters = {
   propertyType?: PropertyType;
   includeArchived?: boolean;
 };
+
+/** Normalise and validate the Equity payment code ("VIV" in VIV#A1). */
+function parsePaymentCode(formData: FormData): { code: string | null; error?: string } {
+  const raw = ((formData.get('paymentCode') as string) || '').trim().toUpperCase();
+  if (!raw) return { code: null };
+  if (!/^[A-Z0-9]{2,10}$/.test(raw)) {
+    return { code: null, error: 'Payment code must be 2-10 letters or numbers (e.g. VIV)' };
+  }
+  return { code: raw };
+}
+
+function friendlyPropertyError(message: string): string {
+  return message.includes('idx_properties_payment_code')
+    ? 'That payment code is already used by another property'
+    : message;
+}
 
 export async function getProperties(filters?: PropertyFilters): Promise<PropertyResult> {
   const supabase = await createClient();
@@ -82,6 +99,11 @@ export async function createProperty(formData: FormData): Promise<PropertyResult
     return { error: 'Not authenticated' };
   }
 
+  const limit = await checkCanAddProperty(user.id);
+  if (!limit.allowed) {
+    return { error: limit.error };
+  }
+
   const name = formData.get('name') as string;
   const propertyType = formData.get('propertyType') as PropertyType;
   const addressLine1 = formData.get('addressLine1') as string;
@@ -91,6 +113,8 @@ export async function createProperty(formData: FormData): Promise<PropertyResult
   const zipCode = formData.get('zipCode') as string;
   const country = (formData.get('country') as string) || 'USA';
   const description = formData.get('description') as string | null;
+  const paymentCode = parsePaymentCode(formData);
+  if (paymentCode.error) return { error: paymentCode.error };
 
   if (!name || !propertyType || !addressLine1 || !city || !state || !zipCode) {
     return { error: 'Required fields are missing' };
@@ -109,12 +133,13 @@ export async function createProperty(formData: FormData): Promise<PropertyResult
       zip_code: zipCode,
       country,
       description,
+      payment_code: paymentCode.code,
     })
     .select()
     .single();
 
   if (error) {
-    return { error: error.message };
+    return { error: friendlyPropertyError(error.message) };
   }
 
   revalidatePath('/properties');
@@ -138,6 +163,8 @@ export async function updateProperty(id: string, formData: FormData): Promise<Pr
   const zipCode = formData.get('zipCode') as string;
   const country = (formData.get('country') as string) || 'USA';
   const description = formData.get('description') as string | null;
+  const paymentCode = parsePaymentCode(formData);
+  if (paymentCode.error) return { error: paymentCode.error };
 
   const { data, error } = await supabase
     .from('properties')
@@ -151,6 +178,7 @@ export async function updateProperty(id: string, formData: FormData): Promise<Pr
       zip_code: zipCode,
       country,
       description,
+      payment_code: paymentCode.code,
     })
     .eq('id', id)
     .eq('owner_id', user.id)
@@ -158,7 +186,7 @@ export async function updateProperty(id: string, formData: FormData): Promise<Pr
     .single();
 
   if (error) {
-    return { error: error.message };
+    return { error: friendlyPropertyError(error.message) };
   }
 
   revalidatePath('/properties');

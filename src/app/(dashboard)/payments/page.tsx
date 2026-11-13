@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Banknote, AlertCircle, TrendingUp, CheckCircle, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Banknote, AlertCircle, TrendingUp, CheckCircle, Plus, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,12 @@ import {
   PaymentStats,
 } from '@/lib/actions/payments';
 import { getLeases, LeaseWithDetails } from '@/lib/actions/leases';
+import {
+  getUnmatchedBankTransactions,
+  syncEquityNow,
+  isEquitySyncAvailable,
+  BankTransaction,
+} from '@/lib/actions/bank-payments';
 import { PaymentStatus } from '@/types';
 
 const statusColors = {
@@ -33,6 +39,7 @@ const statusColors = {
 
 const methodLabels: Record<string, string> = {
   mpesa: 'M-Pesa',
+  equity_bank: 'Equity Bank',
   bank_transfer: 'Bank Transfer',
   cash: 'Cash',
   cheque: 'Cheque',
@@ -54,6 +61,38 @@ export default function PaymentsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+
+  const [unmatched, setUnmatched] = useState<BankTransaction[]>([]);
+  const [canSync, setCanSync] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{ text: string; isError: boolean } | null>(null);
+
+  const fetchUnmatched = useCallback(async () => {
+    const result = await getUnmatchedBankTransactions();
+    if (result.data) setUnmatched(result.data);
+  }, []);
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    setSyncMessage(null);
+    const result = await syncEquityNow();
+    if (result.error) {
+      setSyncMessage({ text: result.error, isError: true });
+    } else if (result.data) {
+      const { matched, unmatched: notMatched, scanned } = result.data;
+      setSyncMessage({
+        text:
+          matched + notMatched === 0
+            ? `Up to date. Checked ${scanned} Equity credit${scanned === 1 ? '' : 's'}, nothing new.`
+            : `Recorded ${matched} new payment${matched === 1 ? '' : 's'}` +
+              (notMatched ? `, ${notMatched} could not be matched to a unit (see below).` : '.'),
+        isError: false,
+      });
+    }
+    setIsSyncing(false);
+    fetchPayments();
+    fetchUnmatched();
+  };
 
   const fetchPayments = useCallback(async () => {
     setIsLoading(true);
@@ -81,6 +120,8 @@ export default function PaymentsPage() {
   useEffect(() => {
     fetchPayments();
     fetchLeases();
+    fetchUnmatched();
+    isEquitySyncAvailable().then(setCanSync);
   }, []);
 
   useEffect(() => {
@@ -105,11 +146,79 @@ export default function PaymentsPage() {
             <h1 className="text-3xl font-bold text-gray-900">Payments</h1>
             <p className="text-gray-600 mt-1">Track rent payments and revenue</p>
           </div>
-          <Button onClick={() => setIsAddOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Add Payment
-          </Button>
+          <div className="flex gap-2">
+            {canSync && (
+              <Button variant="outline" onClick={handleSync} isLoading={isSyncing}>
+                {!isSyncing && <RefreshCw className="h-4 w-4" />}
+                Sync Equity
+              </Button>
+            )}
+            <Button onClick={() => setIsAddOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add Payment
+            </Button>
+          </div>
         </div>
+
+        {syncMessage && (
+          <div
+            className={`p-3 rounded-md text-sm ${
+              syncMessage.isError ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'
+            }`}
+          >
+            {syncMessage.text}
+          </div>
+        )}
+
+        {/* Equity credits that could not be matched to a unit */}
+        {unmatched.length > 0 && (
+          <Card className="border-amber-200">
+            <div className="px-5 py-4 border-b border-amber-100 bg-amber-50 rounded-t-xl">
+              <p className="font-semibold text-amber-900">
+                {unmatched.length} Equity payment{unmatched.length === 1 ? '' : 's'} need attention
+              </p>
+              <p className="text-sm text-amber-800">
+                These reached your account but the reference didn&apos;t match a tenant. Record them
+                manually against the right payment.
+              </p>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Reference used</TableHead>
+                  <TableHead>Payer</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Bank ref</TableHead>
+                  <TableHead>Problem</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {unmatched.map((tx) => (
+                  <TableRow key={tx.id}>
+                    <TableCell className="font-mono">{tx.account_reference ?? '—'}</TableCell>
+                    <TableCell>
+                      {tx.payer_name ?? '—'}
+                      {tx.payer_phone ? (
+                        <span className="block text-xs text-gray-500">{tx.payer_phone}</span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>Ksh {Number(tx.amount).toLocaleString()}</TableCell>
+                    <TableCell>
+                      {new Date(tx.paid_at ?? tx.created_at).toLocaleDateString('en-KE', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{tx.bank_reference}</TableCell>
+                    <TableCell className="text-sm text-amber-800">{tx.match_error}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        )}
 
         {/* Stats */}
         <div className="grid gap-6 md:grid-cols-4">
@@ -196,7 +305,14 @@ export default function PaymentsPage() {
                       {payment.property_name}
                       {payment.unit_number ? ` — Unit ${payment.unit_number}` : ''}
                     </TableCell>
-                    <TableCell>Ksh {payment.amount.toLocaleString()}</TableCell>
+                    <TableCell>
+                      Ksh {payment.amount.toLocaleString()}
+                      {payment.status === 'partial' && Number(payment.amount_paid ?? 0) > 0 && (
+                        <span className="block text-xs text-amber-700">
+                          Ksh {Number(payment.amount_paid).toLocaleString()} received
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {new Date(payment.due_date).toLocaleDateString('en-KE', {
                         month: 'short',

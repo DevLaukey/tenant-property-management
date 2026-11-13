@@ -15,6 +15,7 @@ export type TenantWithLease = Tenant & {
         property: {
           id: string;
           name: string;
+          payment_code?: string | null;
         } | null;
       } | null;
     } | null;
@@ -22,6 +23,7 @@ export type TenantWithLease = Tenant & {
   current_unit?: string | null;
   current_unit_id?: string | null;
   current_property?: string | null;
+  current_property_code?: string | null;
   current_lease_id?: string | null;
   lease_status?: string;
 };
@@ -53,7 +55,7 @@ export async function getTenants(filters?: TenantFilters): Promise<TenantResult>
           unit:units(
             id,
             unit_number,
-            property:properties(id, name)
+            property:properties(id, name, payment_code)
           )
         )
       )
@@ -107,7 +109,7 @@ export async function getTenant(id: string): Promise<TenantResult> {
           unit:units(
             id,
             unit_number,
-            property:properties(id, name)
+            property:properties(id, name, payment_code)
           )
         )
       )
@@ -125,6 +127,7 @@ export async function getTenant(id: string): Promise<TenantResult> {
     current_unit: activeLeaseTenant?.lease?.unit?.unit_number || null,
     current_unit_id: activeLeaseTenant?.lease?.unit?.id || null,
     current_property: activeLeaseTenant?.lease?.unit?.property?.name || null,
+    current_property_code: activeLeaseTenant?.lease?.unit?.property?.payment_code || null,
     current_lease_id: activeLeaseTenant?.lease?.id || null,
     lease_status: activeLeaseTenant ? activeLeaseTenant.lease?.status : 'inactive',
   };

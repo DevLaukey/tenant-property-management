@@ -16,6 +16,7 @@ export interface Profile {
   role: UserRole;
   avatar_url?: string;
   organization_name?: string;
+  onboarding_completed?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +35,8 @@ export interface Property {
   description?: string;
   total_units: number;
   image_url?: string;
+  /** Equity account reference prefix, e.g. VIV in VIV#A1 */
+  payment_code?: string | null;
   is_archived: boolean;
   created_at: string;
   updated_at: string;
@@ -95,6 +98,8 @@ export interface Payment {
   id: string;
   lease_id: string;
   amount: number;
+  /** Total received so far (for part-payments) */
+  amount_paid?: number;
   due_date: string;
   paid_date?: string;
   payment_method?: string;
@@ -139,4 +144,48 @@ export interface Document {
   tenant_id?: string;
   uploaded_by?: string;
   created_at: string;
+}
+
+// =====================================================
+// Subscriptions & Billing
+// =====================================================
+
+export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'expired' | 'cancelled';
+export type BillingCycle = 'monthly' | 'annual';
+export type BillingProvider = 'mpesa' | 'paystack';
+export type BillingTransactionStatus = 'pending' | 'success' | 'failed' | 'cancelled';
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  billing_cycle: BillingCycle;
+  status: SubscriptionStatus;
+  trial_ends_at?: string | null;
+  current_period_start?: string | null;
+  current_period_end?: string | null;
+  cancel_at_period_end: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BillingTransaction {
+  id: string;
+  user_id: string;
+  subscription_id?: string | null;
+  plan_id: string;
+  billing_cycle: BillingCycle;
+  amount: number;
+  currency: string;
+  provider: BillingProvider;
+  status: BillingTransactionStatus;
+  phone?: string | null;
+  provider_reference?: string | null;
+  merchant_request_id?: string | null;
+  receipt_number?: string | null;
+  result_code?: string | null;
+  result_desc?: string | null;
+  paid_at?: string | null;
+  created_at: string;
+  updated_at: string;
 }

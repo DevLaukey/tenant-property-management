@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Bell, Menu, User, LogOut } from 'lucide-react';
+import Link from 'next/link';
+import { Bell, Menu, User, LogOut, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/actions/auth';
+import { SubscriptionBanner } from '@/components/billing/subscription-banner';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -34,6 +36,8 @@ export function Header({ onMenuClick }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <SubscriptionBanner />
+
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
             <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
@@ -55,6 +59,14 @@ export function Header({ onMenuClick }: HeaderProps) {
                   onClick={() => setShowMenu(false)}
                 />
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-1 z-50">
+                  <Link
+                    href="/billing"
+                    onClick={() => setShowMenu(false)}
+                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Billing
+                  </Link>
                   <button
                     onClick={handleSignOut}
                     className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

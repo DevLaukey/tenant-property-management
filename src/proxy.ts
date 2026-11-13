@@ -1,7 +1,33 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { getSubscriptionAccess } from '@/lib/billing/access';
+
+/** Require login. Onboarding/subscription gating applies to all of these. */
+const PROTECTED_ROUTES = [
+  '/dashboard',
+  '/properties',
+  '/units',
+  '/tenants',
+  '/leases',
+  '/payments',
+  '/maintenance',
+  '/billing',
+  '/onboarding',
+];
+
+/** Logged-in users are bounced to /dashboard from these. */
+const AUTH_ROUTES = ['/login', '/signup', '/forgot-password'];
+
+/** Auth pages a logged-in user may still need (recovery session, verification). */
+const AUTH_ROUTES_ALLOW_SESSION = ['/reset-password', '/verify-email'];
+
+function matches(pathname: string, routes: string[]): boolean {
+  return routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
 
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -29,30 +55,95 @@ export async function proxy(request: NextRequest) {
     }
   );
 
+  // Refreshes the session cookie if needed. Must run before any early return
+  // that hands back supabaseResponse.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-
-  // Protected routes - require authentication
-  const protectedRoutes = ['/dashboard', '/properties', '/tenants', '/leases', '/payments', '/maintenance'];
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
-
-  // Auth routes - redirect to dashboard if already logged in
-  const authRoutes = ['/login', '/signup', '/forgot-password'];
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
-
-  if (isProtectedRoute && !user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
+  // API routes (incl. M-Pesa / Paystack callbacks) are never redirected.
+  if (pathname.startsWith('/api/')) {
+    return supabaseResponse;
   }
 
-  if (isAuthRoute && user) {
+  /** Redirect while keeping any refreshed Supabase auth cookies. */
+  const redirectTo = (path: string) => {
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+    const [p, query] = path.split('?');
+    url.pathname = p;
+    url.search = query ? `?${query}` : '';
+    const response = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
+    return response;
+  };
+
+  if (matches(pathname, AUTH_ROUTES_ALLOW_SESSION)) {
+    if (pathname.startsWith('/reset-password') && !user) {
+      return redirectTo(
+        `/login?error=${encodeURIComponent('Your password reset link is invalid or has expired. Please request a new one.')}`
+      );
+    }
+    return supabaseResponse;
+  }
+
+  if (matches(pathname, AUTH_ROUTES)) {
+    return user ? redirectTo('/dashboard') : supabaseResponse;
+  }
+
+  if (!matches(pathname, PROTECTED_ROUTES)) {
+    // Public: "/", "/pricing", "/auth/*", etc.
+    return supabaseResponse;
+  }
+
+  if (!user) {
+    return redirectTo('/login');
+  }
+
+  // ---- Onboarding & subscription gating ----
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role, onboarding_completed')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    // Fail open on DB errors rather than locking everyone out.
+    console.error('[proxy] profile lookup failed:', profileError.message);
+    return supabaseResponse;
+  }
+
+  const role = profile?.role ?? user.user_metadata?.role;
+  if (role === 'tenant') {
+    return supabaseResponse;
+  }
+
+  const isOnboardingPath = matches(pathname, ['/onboarding']);
+
+  if (!profile?.onboarding_completed) {
+    return isOnboardingPath ? supabaseResponse : redirectTo('/onboarding');
+  }
+
+  if (isOnboardingPath) {
+    return redirectTo('/dashboard');
+  }
+
+  if (matches(pathname, ['/billing'])) {
+    return supabaseResponse;
+  }
+
+  const { data: subscription, error: subError } = await supabase
+    .from('subscriptions')
+    .select('status, plan_id, trial_ends_at, current_period_end')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (subError) {
+    console.error('[proxy] subscription lookup failed:', subError.message);
+    return supabaseResponse;
+  }
+
+  if (!getSubscriptionAccess(subscription).hasAccess) {
+    return redirectTo('/billing?expired=1');
   }
 
   return supabaseResponse;
